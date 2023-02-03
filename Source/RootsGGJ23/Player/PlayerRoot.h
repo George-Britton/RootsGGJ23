@@ -7,6 +7,7 @@
 #include "PaperFlipbookComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
 #include "PlayerRoot.generated.h"
 
 UCLASS()
@@ -20,6 +21,8 @@ public:
 	
 	// Camera component
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float CameraDistance = 500.f;
+	UPROPERTY(BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* PlayerCamera = nullptr;
 	
 	// Flipbook mesh for the root
@@ -45,6 +48,15 @@ public:
 	TArray<FVector> PathPoints;
 	float LastAxis = 0.f;
 	
+	// The movement blocking collision boxes
+	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Movement")
+	float SideDistance = 513.f;
+	
+	UBoxComponent* LeftBlockingBox = nullptr;
+	UBoxComponent* RightBlockingBox = nullptr;
+	bool IsBlockingLeft = false;
+	bool IsBlockingRight = false;
+	
 protected:
 	// Called whenever a value is changed
 	void OnConstruction(const FTransform& Transform);
@@ -59,7 +71,17 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
+	// Overlaps
+	UFUNCTION()
+		void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+		void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	
 	// Called to move right on-screen
 	UFUNCTION()
 		void MoveRight(float AxisValue);
+	
+	// Called to get the actual Z velocity
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+		float GetZSpeed() { return CurrentSpeed * (FVector::DotProduct(GetActorUpVector(), FVector(0.f, 0.f, 1.f))); }
 };
