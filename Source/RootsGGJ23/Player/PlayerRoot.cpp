@@ -27,6 +27,8 @@ APlayerRoot::APlayerRoot()
 	RightBlockingBox->SetupAttachment(PlayerCamera);
 	LeftBlockingBox->SetBoxExtent(FVector(1.f, 1.f, 1000.f));
 	RightBlockingBox->SetBoxExtent(FVector(1.f, 1.f, 1000.f));
+	LeftBlockingBox->bHiddenInGame = false;
+	RightBlockingBox->bHiddenInGame = false;
 }
 
 // Called whenever a value is changed
@@ -53,12 +55,6 @@ void APlayerRoot::BeginPlay()
 	// Movement
 	IsBlockingLeft = false;
 	IsBlockingRight = false;
-	
-	// Bind overlaps
-	LeftBlockingBox->OnComponentBeginOverlap.AddDynamic(this, &APlayerRoot::OnOverlapBegin);
-	LeftBlockingBox->OnComponentEndOverlap.AddDynamic(this, &APlayerRoot::OnOverlapEnd);
-	RightBlockingBox->OnComponentBeginOverlap.AddDynamic(this, &APlayerRoot::OnOverlapBegin);
-	RightBlockingBox->OnComponentEndOverlap.AddDynamic(this, &APlayerRoot::OnOverlapEnd);
 }
 
 // Called to bind functionality to input
@@ -82,19 +78,10 @@ void APlayerRoot::Tick(float DeltaTime)
 	AddActorLocalOffset(GetActorUpVector() * CurrentSpeed);
 	SetActorRotation(FRotator(0.f, 0.f, TurnRate * Lerp));
 	PlayerCamera->SetWorldLocation(FVector(CameraLoc.X, CameraLoc.Y, GetActorLocation().Z));
-}
-
-
-// Overlaps
-void APlayerRoot::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (OtherComp == GetCapsuleComponent() && LeftBlockingBox->IsOverlappingComponent(GetCapsuleComponent()) && !IsBlockingLeft) IsBlockingLeft = true;
-	if (OtherComp == GetCapsuleComponent() && RightBlockingBox->IsOverlappingComponent(GetCapsuleComponent()) && !IsBlockingRight) IsBlockingRight = true;
-}
-void APlayerRoot::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (OtherComp == GetCapsuleComponent() && !LeftBlockingBox->IsOverlappingComponent(GetCapsuleComponent()) && IsBlockingLeft) IsBlockingLeft = false;
-	if (OtherComp == GetCapsuleComponent() && !RightBlockingBox->IsOverlappingComponent(GetCapsuleComponent()) && IsBlockingRight) IsBlockingRight = false;
+	
+	//Blocking
+	IsBlockingLeft = GetActorLocation().Y <= PlayerCamera->GetComponentLocation().Y - SideDistance;
+	IsBlockingRight = GetActorLocation().Y >= PlayerCamera->GetComponentLocation().Y + SideDistance;
 }
 
 // Called to move right on-screen
@@ -108,7 +95,7 @@ void APlayerRoot::MoveRight(float AxisValue)
 	}
 	
 	// Movement
-	if (AxisValue != 0.f) Lerp = FMath::Clamp(Lerp + (TurnSpeed * AxisValue), -(int32(!IsBlockingLeft)), int32(!IsBlockingRight));
-	else Lerp = Lerp > 0.025f ? Lerp - TurnSpeed : Lerp < -0.025f ? Lerp + TurnSpeed : 0;
+	Lerp = FMath::Clamp(Lerp + (TurnSpeed * AxisValue), -(int32(!IsBlockingLeft)), int32(!IsBlockingRight));
+	if (AxisValue == 0.f) Lerp = Lerp > 0.025f ? Lerp - TurnSpeed : Lerp < -0.025f ? Lerp + TurnSpeed : 0;
 
 }
