@@ -10,6 +10,9 @@
 #include "Components/BoxComponent.h"
 #include "PlayerRoot.generated.h"
 
+// Delegate for the reach the top event
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReachTop, TArray<FVector>, SplinePoints);
+
 UCLASS()
 class ROOTSGGJ23_API APlayerRoot : public ACharacter
 {
@@ -51,11 +54,14 @@ public:
 	// The movement blocking collision boxes
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Movement")
 	float SideDistance = 513.f;
-	
 	UBoxComponent* LeftBlockingBox = nullptr;
 	UBoxComponent* RightBlockingBox = nullptr;
 	bool IsBlockingLeft = false;
 	bool IsBlockingRight = false;
+	
+	// Delegate for the reaching the top
+	UPROPERTY(BlueprintAssignable, Category = "Delegate")
+	FOnReachTop OnReachTop;
 	
 protected:
 	// Called whenever a value is changed
@@ -70,13 +76,7 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
-	// Overlaps
-	UFUNCTION()
-		void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	UFUNCTION()
-		void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
+
 	// Called to move right on-screen
 	UFUNCTION()
 		void MoveRight(float AxisValue);
@@ -84,4 +84,8 @@ public:
 	// Called to get the actual Z velocity
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 		float GetZSpeed() { return CurrentSpeed * (FVector::DotProduct(GetActorUpVector(), FVector(0.f, 0.f, 1.f))); }
+		
+	// Called to announce reach top
+	UFUNCTION(BlueprintCallable, Category = "Delegates")
+	void CallOnReachTop() { OnReachTop.Broadcast(PathPoints); };
 };
