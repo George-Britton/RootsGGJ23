@@ -12,6 +12,10 @@
 
 // Delegate for the reach the top event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReachTop, TArray<FVector>, SplinePoints);
+// Delegate for getting in range of the player
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInRangeOfPlayer, AActor*, OtherActor);
+// Delegate for leaving the player
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOutOfRangeOfPlayer, AActor*, OtherActor);
 
 UCLASS()
 class ROOTSGGJ23_API APlayerRoot : public ACharacter
@@ -29,6 +33,7 @@ public:
 	UCameraComponent* PlayerCamera = nullptr;
 	
 	// Flipbook mesh for the root
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
 	UPaperFlipbookComponent* FlipbookComponent = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
 	UPaperFlipbook* Flipbook = nullptr;
@@ -54,14 +59,25 @@ public:
 	// The movement blocking collision boxes
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Movement")
 	float SideDistance = 513.f;
-	UBoxComponent* LeftBlockingBox = nullptr;
-	UBoxComponent* RightBlockingBox = nullptr;
 	bool IsBlockingLeft = false;
 	bool IsBlockingRight = false;
+	bool IsGoingUp = true;
 	
-	// Delegate for the reaching the top
+	// The despawn/respawn boxes
+	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
+	UBoxComponent* BottomBox = nullptr;
+	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
+	UBoxComponent* TopBox = nullptr;
+	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
+	float DespawnBoxHeight = 1000.f;
+	
+	// Delegates
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
 	FOnReachTop OnReachTop;
+	UPROPERTY(BlueprintAssignable, Category = "Delegate")
+	FOnOutOfRangeOfPlayer OnOutOfRangeOfPlayer;
+	UPROPERTY(BlueprintAssignable, Category = "Delegate")
+	FOnInRangeOfPlayer OnInRangeOfPlayer;
 	
 protected:
 	// Called whenever a value is changed
@@ -77,6 +93,13 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	
+	// Overlaps
+	UFUNCTION()
+		void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+		void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
 	// Called to move right on-screen
 	UFUNCTION()
 		void MoveRight(float AxisValue);
@@ -86,6 +109,8 @@ public:
 		float GetZSpeed() { return CurrentSpeed * (FVector::DotProduct(GetActorUpVector(), FVector(0.f, 0.f, 1.f))); }
 		
 	// Called to announce reach top
+	UFUNCTION(BlueprintCallable, Category = "Events")
+	TArray<FVector> GetPathPoints() { return PathPoints; };
 	UFUNCTION(BlueprintCallable, Category = "Delegates")
 	void CallOnReachTop() { OnReachTop.Broadcast(PathPoints); };
 };

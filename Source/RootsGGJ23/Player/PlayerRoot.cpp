@@ -21,14 +21,14 @@ APlayerRoot::APlayerRoot()
 	FlipbookComponent->SetRelativeRotation(FRotator(0, 90, 0));
 	
 	// The movement blocking boxes
-	LeftBlockingBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Left Blocking Box"));
-	RightBlockingBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Right Blocking Box"));
-	LeftBlockingBox->SetupAttachment(PlayerCamera);
-	RightBlockingBox->SetupAttachment(PlayerCamera);
-	LeftBlockingBox->SetBoxExtent(FVector(1.f, 1.f, 1000.f));
-	RightBlockingBox->SetBoxExtent(FVector(1.f, 1.f, 1000.f));
-	LeftBlockingBox->bHiddenInGame = false;
-	RightBlockingBox->bHiddenInGame = false;
+	BottomBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Bottom Box"));
+	TopBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Top Box"));
+	BottomBox->SetupAttachment(PlayerCamera);
+	TopBox->SetupAttachment(PlayerCamera);
+	BottomBox->SetBoxExtent(FVector(10000.f, 10000.f, 1.f));
+	TopBox->SetBoxExtent(FVector(10000.f, 10000.f, 1.f));
+	BottomBox->bHiddenInGame = false;
+	TopBox->bHiddenInGame = false;
 }
 
 // Called whenever a value is changed
@@ -36,11 +36,10 @@ void APlayerRoot::OnConstruction(const FTransform& Transform)
 {
 	if(Flipbook) FlipbookComponent->SetFlipbook(Flipbook);
 	Acceleration = FMath::Clamp(Acceleration, 0.01, 100.f);
-	//MaxSpeed = FMath::Clamp(MaxSpeed, Acceleration, 10000.f);
 	TurnSpeed = FMath::Clamp(TurnSpeed, 0.01, 10.f);
-	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, 0.f));
-	LeftBlockingBox->SetWorldLocation(PlayerCamera->GetComponentLocation() + FVector(CameraDistance, -SideDistance, 0.f));
-	RightBlockingBox->SetWorldLocation(PlayerCamera->GetComponentLocation() + FVector(CameraDistance, SideDistance, 0.f));
+	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, 200.f));
+	BottomBox->SetWorldLocation(PlayerCamera->GetComponentLocation() - FVector(0.f, 0.f, DespawnBoxHeight));
+	TopBox->SetWorldLocation(PlayerCamera->GetComponentLocation() + FVector(0.f, 0.f, DespawnBoxHeight));
 }
 
 // Called when the game starts or when spawned
@@ -51,6 +50,10 @@ void APlayerRoot::BeginPlay()
 	// Panic setup
 	if(Flipbook) FlipbookComponent->SetFlipbook(Flipbook);
 	CameraLoc = PlayerCamera->GetComponentLocation();
+	
+	// Set top and bottom box bindings
+	BottomBox->OnComponentEndOverlap.AddDynamic(this, &APlayerRoot::OnOverlapEnd);
+	TopBox->OnComponentBeginOverlap.AddDynamic(this, &APlayerRoot::OnOverlapBegin);
 	
 	// Movement
 	IsBlockingLeft = false;
@@ -66,6 +69,16 @@ void APlayerRoot::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAxis("MoveRight", this, &APlayerRoot::MoveRight);
 }
 
+// Overlaps
+void APlayerRoot::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OverlappedComp == TopBox && IsGoingUp) OnInRangeOfPlayer.Broadcast(OtherActor);
+}
+void APlayerRoot::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (OverlappedComp == BottomBox && IsGoingUp) OnOutOfRangeOfPlayer.Broadcast(OtherActor);
+}
+
 // Called every frame
 void APlayerRoot::Tick(float DeltaTime)
 {
@@ -77,7 +90,7 @@ void APlayerRoot::Tick(float DeltaTime)
 	// Move
 	AddActorLocalOffset(GetActorUpVector() * CurrentSpeed);
 	SetActorRotation(FRotator(0.f, 0.f, TurnRate * Lerp));
-	PlayerCamera->SetWorldLocation(FVector(CameraLoc.X, CameraLoc.Y, GetActorLocation().Z));
+	PlayerCamera->SetWorldLocation(FVector(CameraLoc.X, CameraLoc.Y, GetActorLocation().Z + 200));
 	
 	//Blocking
 	IsBlockingLeft = GetActorLocation().Y <= PlayerCamera->GetComponentLocation().Y - SideDistance;
