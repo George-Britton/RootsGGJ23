@@ -61,6 +61,10 @@ void APlayerRoot::BeginPlay()
 	BottomBox->OnComponentEndOverlap.AddDynamic(this, &APlayerRoot::OnOverlapEnd);
 	TopBox->OnComponentBeginOverlap.AddDynamic(this, &APlayerRoot::OnOverlapBegin);
 	
+	// Add first spline point
+	PathPoints.Add(GetActorLocation());
+	PathPoints.Add(GetActorLocation() + FVector(0.f, 0.f, 1.f));
+	
 	// Movement
 	IsBlockingLeft = false;
 	IsBlockingRight = false;
@@ -118,9 +122,8 @@ void APlayerRoot::MoveRight(float AxisValue)
 	if(IsGoingUp)
 	{
 		// Log turn point for spline
-		if (AxisValue != LastAxis)
+		if (FVector::Distance(PathPoints[PathPoints.Num() - 1], GetActorLocation()) >= 261)
 		{
-			LastAxis = AxisValue;
 			PathPoints.Add(GetActorLocation());
 		}
 		
