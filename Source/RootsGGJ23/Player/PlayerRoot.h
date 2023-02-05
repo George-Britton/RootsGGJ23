@@ -6,16 +6,20 @@
 #include "GameFramework/Character.h"
 #include "PaperFlipbookComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SplineMeshComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/BoxComponent.h"
 #include "PlayerRoot.generated.h"
 
 // Delegate for the reach the top event
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReachTop, TArray<FVector>, SplinePoints);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnReachTop);
 // Delegate for getting in range of the player
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInRangeOfPlayer, AActor*, OtherActor);
 // Delegate for leaving the player
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOutOfRangeOfPlayer, AActor*, OtherActor);
+// Delegate for saying the root will start growing
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartGrowing);
 
 UCLASS()
 class ROOTSGGJ23_API APlayerRoot : public ACharacter
@@ -34,15 +38,32 @@ public:
 	
 	// Flipbook mesh for the root
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
-	UPaperFlipbookComponent* FlipbookComponent = nullptr;
+	UPaperFlipbookComponent* HeadFlipbookComponent = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
-	UPaperFlipbook* Flipbook = nullptr;
+	UPaperFlipbookComponent* DrillFlipbookComponent = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* HeadFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* SadFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* FastFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* AngeryFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* DrillFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	USoundBase* DrillSound = nullptr;
+	UAudioComponent* SoundComp = nullptr;
+	bool Ouchie = false;
+	
 	
 	// Speed and movement
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float MaxSpeed = 10.f;
+	float ResetMaxSpeed = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float Acceleration = 10.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float CurrentSpeed = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float TurnSpeed = 0.025f;
@@ -61,17 +82,26 @@ public:
 	float SideDistance = 513.f;
 	bool IsBlockingLeft = false;
 	bool IsBlockingRight = false;
-	bool IsGoingUp = true;
+	bool IsGoingUp = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickups")
+	bool IsProtected = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickups")
+	bool IsFast = false;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Happiness")
+	int32 Happiness = 0.f;
 	
 	// The despawn/respawn boxes
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
-	UBoxComponent* BottomBox = nullptr;
+	class UBoxComponent* BottomBox = nullptr;
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
-	UBoxComponent* TopBox = nullptr;
+	class UBoxComponent* TopBox = nullptr;
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
 	float DespawnBoxHeight = 1000.f;
-	
+	bool GotFirstSpline = false;
 	// Delegates
+	UPROPERTY(BlueprintAssignable, Category = "Delegate")
+	FOnStartGrowing OnStartGrowing;
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
 	FOnReachTop OnReachTop;
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
@@ -93,6 +123,19 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	// Called to slow the player and tell it it's been hit
+	UFUNCTION(BlueprintCallable, Category = "Events")
+	void Bonk(AActor* HitActor);
+	UFUNCTION(BlueprintCallable, Category = "Events")
+	void Chomp(AActor* HitActor);
+	
+	//Pickups
+	UFUNCTION(BlueprintCallable, Category = "Pickups")
+	void GivePickup(FString Name) { if (Name == "Protect") {Protect();} else Zoom(); };
+	void Protect();
+	void Zoom();
+	UFUNCTION()
+	void ResetFace();
 	
 	// Overlaps
 	UFUNCTION()
@@ -110,7 +153,9 @@ public:
 		
 	// Called to announce reach top
 	UFUNCTION(BlueprintCallable, Category = "Events")
-	TArray<FVector> GetPathPoints() { return PathPoints; };
+	void StartGrowing() { IsGoingUp = true; OnStartGrowing.Broadcast(); };
+	UFUNCTION(BlueprintCallable, Category = "Events")
+	TArray<FVector> GetPathPoints() { PathPoints.Add(GetActorLocation()); return PathPoints; };
 	UFUNCTION(BlueprintCallable, Category = "Delegates")
-	void CallOnReachTop() { OnReachTop.Broadcast(PathPoints); };
+	void CallOnReachTop() { IsGoingUp = false; HeadFlipbookComponent->SetFlipbook(SadFlipbook); OnReachTop.Broadcast(); };
 };
