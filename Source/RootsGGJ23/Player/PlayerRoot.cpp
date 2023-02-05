@@ -98,6 +98,7 @@ void APlayerRoot::Bonk(AActor* HitActor)
 			DrillFlipbookComponent->SetRelativeScale3D(FVector(0.f, 1.f, 0.f));
 			SoundComp->SetSound(DrillSound);
 			SoundComp->Play();
+			HitActor->Destroy();
 		}
 	} else{
 		Ouchie = true;
@@ -170,11 +171,6 @@ void APlayerRoot::Tick(float DeltaTime)
 	
 	if(IsGoingUp)
 	{
-		if (!GotFirstSpline)
-		{
-			PathPoints.Add(GetActorLocation());
-			GotFirstSpline = true;
-		}
 		// Set Speed and turn
 		CurrentSpeed = FMath::Clamp(CurrentSpeed + Acceleration, 0.f, MaxSpeed);
 		
@@ -194,6 +190,11 @@ void APlayerRoot::MoveRight(float AxisValue)
 {
 	if(IsGoingUp)
 	{
+		if (!GotFirstSpline)
+		{
+			PathPoints.Add(GetActorLocation());
+			GotFirstSpline = true;
+		}
 		if (AxisValue != LastAxis)
 		{
 			LastAxis = AxisValue;
