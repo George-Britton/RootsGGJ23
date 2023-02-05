@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/SplineMeshComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/BoxComponent.h"
 #include "PlayerRoot.generated.h"
 
@@ -39,13 +40,27 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
 	UPaperFlipbookComponent* HeadFlipbookComponent = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbookComponent* DrillFlipbookComponent = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
 	UPaperFlipbook* HeadFlipbook = nullptr;
-	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
-	// USplineMeshComponent* TailSplineComponent = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* SadFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* FastFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* AngeryFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	UPaperFlipbook* DrillFlipbook = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Appearance")
+	USoundBase* DrillSound = nullptr;
+	UAudioComponent* SoundComp = nullptr;
+	bool Ouchie = false;
+	
 	
 	// Speed and movement
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float MaxSpeed = 10.f;
+	float ResetMaxSpeed = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float Acceleration = 10.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -68,6 +83,13 @@ public:
 	bool IsBlockingLeft = false;
 	bool IsBlockingRight = false;
 	bool IsGoingUp = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickups")
+	bool IsProtected = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickups")
+	bool IsFast = false;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Happiness")
+	int32 Happiness = 0.f
 	
 	// The despawn/respawn boxes
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
@@ -76,7 +98,7 @@ public:
 	UBoxComponent* TopBox = nullptr;
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
 	float DespawnBoxHeight = 1000.f;
-	
+	bool GotFirstSpline = false;
 	// Delegates
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
 	FOnStartGrowing OnStartGrowing;
@@ -104,6 +126,16 @@ public:
 	// Called to slow the player and tell it it's been hit
 	UFUNCTION(BlueprintCallable, Category = "Events")
 	void Bonk(AActor* HitActor);
+	UFUNCTION(BlueprintCallable, Category = "Events")
+	void Chomp(AActor* HitActor);
+	
+	//Pickups
+	UFUNCTION(BlueprintCallable, Category = "Pickups")
+	void GivePickup(FString Name) { if (Name == "Protect") {Protect();} else Zoom(); };
+	void Protect();
+	void Zoom();
+	UFUNCTION()
+	void ResetFace();
 	
 	// Overlaps
 	UFUNCTION()
