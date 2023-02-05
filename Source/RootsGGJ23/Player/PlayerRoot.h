@@ -89,13 +89,13 @@ public:
 	bool IsFast = false;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Happiness")
-	int32 Happiness = 0.f
+	int32 Happiness = 0.f;
 	
 	// The despawn/respawn boxes
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
-	UBoxComponent* BottomBox = nullptr;
+	class UBoxComponent* BottomBox = nullptr;
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
-	UBoxComponent* TopBox = nullptr;
+	class UBoxComponent* TopBox = nullptr;
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
 	float DespawnBoxHeight = 1000.f;
 	bool GotFirstSpline = false;
@@ -157,5 +157,5 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Events")
 	TArray<FVector> GetPathPoints() { PathPoints.Add(GetActorLocation()); return PathPoints; };
 	UFUNCTION(BlueprintCallable, Category = "Delegates")
-	void CallOnReachTop() { OnReachTop.Broadcast(); };
+	void CallOnReachTop() { IsGoingUp = false; HeadFlipbookComponent->SetFlipbook(SadFlipbook); OnReachTop.Broadcast(); };
 };
