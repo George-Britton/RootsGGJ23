@@ -20,6 +20,11 @@ APlayerRoot::APlayerRoot()
 	HeadFlipbookComponent->SetupAttachment(RootComponent);
 	HeadFlipbookComponent->SetRelativeRotation(FRotator(0, 90, 0));
 	HeadFlipbookComponent->SetRelativeScale3D(FVector(0.3, 1.f, 0.3));
+	DrillFlipbookComponent = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("Drill Component"));
+	DrillFlipbookComponent->SetupAttachment(RootComponent);
+	DrillFlipbookComponent->SetRelativeRotation(FRotator(0, 90, 0));
+	DrillFlipbookComponent->SetRelativeScale3D(FVector(0.f, 1.f, 0.f));
+	SoundComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Sound"));
 	
 	// Tail component
 	// TailSplineComponent = CreateDefaultSubobject<USplineMeshComponent>(TEXT("Tail Component"));
@@ -41,6 +46,7 @@ APlayerRoot::APlayerRoot()
 void APlayerRoot::OnConstruction(const FTransform& Transform)
 {
 	if(HeadFlipbook) HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
+	if(DrillFlipbook) DrillFlipbookComponent->SetFlipbook(DrillFlipbook);
 	Acceleration = FMath::Clamp(Acceleration, 0.01, 100.f);
 	TurnSpeed = FMath::Clamp(TurnSpeed, 0.01, 10.f);
 	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, 100.f));
@@ -52,14 +58,20 @@ void APlayerRoot::OnConstruction(const FTransform& Transform)
 void APlayerRoot::BeginPlay()
 {
 	Super::BeginPlay();
+	ResetMaxSpeed = MaxSpeed;
 	
 	// Panic setup
 	if(HeadFlipbook) HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
+	if(DrillFlipbook) DrillFlipbookComponent->SetFlipbook(DrillFlipbook);
 	CameraLoc = PlayerCamera->GetComponentLocation();
 	
 	// Set top and bottom box bindings
 	BottomBox->OnComponentEndOverlap.AddDynamic(this, &APlayerRoot::OnOverlapEnd);
 	TopBox->OnComponentBeginOverlap.AddDynamic(this, &APlayerRoot::OnOverlapBegin);
+	
+	// Add first spline point
+	PathPoints.Add(GetActorLocation());
+	PathPoints.Add(GetActorLocation() + FVector(0.f, 0.f, 1.f));
 	
 	// Movement
 	IsBlockingLeft = false;
@@ -78,7 +90,26 @@ void APlayerRoot::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 // Called to slow the player and tell it it's been hit
 void APlayerRoot::Bonk(AActor* HitActor)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, HitActor->GetName());
+	if (IsProtected)
+	{
+		ResetFace();
+		if (DrillSound)
+		{
+			DrillFlipbookComponent->SetRelativeScale3D(FVector(0.f, 1.f, 0.f));
+			SoundComp->SetSound(DrillSound);
+			SoundComp->Play();
+		}
+	} else{
+		Ouchie = true;
+		HeadFlipbookComponent->SetFlipbook(SadFlipbook);
+		CurrentSpeed = 0.f;
+		FTimerHandle OuchTimer;
+		GetWorld()->GetTimerManager().SetTimer(OuchTimer, this, &APlayerRoot::ResetFace, 1.5f);
+	}
+}
+void APlayerRoot::Chomp(AActor* HitActor)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, "Chomp: " + HitActor->GetName());
 }
 
 // Overlaps
@@ -91,6 +122,47 @@ void APlayerRoot::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Othe
 	if (OverlappedComp == BottomBox && IsGoingUp) OnOutOfRangeOfPlayer.Broadcast(OtherActor);
 }
 
+// Pickups
+void APlayerRoot::Protect()
+{
+	if (!IsProtected)
+	{
+		DrillFlipbookComponent->SetRelativeScale3D(FVector(0.3, 1.f, 0.3));
+		HeadFlipbookComponent->SetFlipbook(AngeryFlipbook);
+		IsProtected = true;
+	}
+}
+void APlayerRoot::Zoom()
+{
+	if (!IsFast)
+	{
+		MaxSpeed = ResetMaxSpeed * 2;
+		HeadFlipbookComponent->SetFlipbook(FastFlipbook);
+		IsFast = true;
+		FTimerHandle FastTimer;
+		GetWorld()->GetTimerManager().SetTimer(FastTimer, this, &APlayerRoot::ResetFace, 5.f);
+	}
+}
+void APlayerRoot::ResetFace()
+{
+	HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
+	if (Ouchie)
+	{
+		if (IsFast)
+		{
+			HeadFlipbookComponent->SetFlipbook(FastFlipbook);
+		}
+		else{
+			HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
+		}
+	}
+	else if (IsFast)
+	{
+		IsFast = false;
+		MaxSpeed = ResetMaxSpeed;
+	}
+}
+
 // Called every frame
 void APlayerRoot::Tick(float DeltaTime)
 {
@@ -98,6 +170,11 @@ void APlayerRoot::Tick(float DeltaTime)
 	
 	if(IsGoingUp)
 	{
+		if (!GotFirstSpline)
+		{
+			PathPoints.Add(GetActorLocation());
+			GotFirstSpline = true;
+		}
 		// Set Speed and turn
 		CurrentSpeed = FMath::Clamp(CurrentSpeed + Acceleration, 0.f, MaxSpeed);
 		
@@ -117,10 +194,14 @@ void APlayerRoot::MoveRight(float AxisValue)
 {
 	if(IsGoingUp)
 	{
-		// Log turn point for spline
 		if (AxisValue != LastAxis)
 		{
 			LastAxis = AxisValue;
+			PathPoints.Add(GetActorLocation());
+		}
+		// Log turn point for spline
+		if (FVector::Distance(PathPoints[PathPoints.Num() - 1], GetActorLocation()) >= 261)
+		{
 			PathPoints.Add(GetActorLocation());
 		}
 		
