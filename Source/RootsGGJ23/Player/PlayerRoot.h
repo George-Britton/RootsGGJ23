@@ -56,6 +56,7 @@ public:
 	UAudioComponent* SoundComp = nullptr;
 	bool Ouchie = false;
 	
+
 	
 	// Speed and movement
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -83,6 +84,7 @@ public:
 	bool IsBlockingLeft = false;
 	bool IsBlockingRight = false;
 	bool IsGoingUp = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickups")
 	bool IsProtected = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickups")
@@ -90,6 +92,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Happiness")
 	int32 Happiness = 0.f;
+
 	
 	// The despawn/respawn boxes
 	UPROPERTY(Editanywhere, BlueprintReadWrite, Category = "Collision")
@@ -126,6 +129,7 @@ public:
 	// Called to slow the player and tell it it's been hit
 	UFUNCTION(BlueprintCallable, Category = "Events")
 	void Bonk(AActor* HitActor);
+
 	UFUNCTION(BlueprintCallable, Category = "Events")
 	void Chomp(AActor* HitActor);
 	
@@ -136,7 +140,7 @@ public:
 	void Zoom();
 	UFUNCTION()
 	void ResetFace();
-	
+
 	// Overlaps
 	UFUNCTION()
 		void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -158,4 +162,5 @@ public:
 	TArray<FVector> GetPathPoints() { PathPoints.Add(GetActorLocation()); return PathPoints; };
 	UFUNCTION(BlueprintCallable, Category = "Delegates")
 	void CallOnReachTop() { IsGoingUp = false; HeadFlipbookComponent->SetFlipbook(SadFlipbook); OnReachTop.Broadcast(); };
+
 };

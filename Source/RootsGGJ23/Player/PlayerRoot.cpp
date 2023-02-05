@@ -20,11 +20,13 @@ APlayerRoot::APlayerRoot()
 	HeadFlipbookComponent->SetupAttachment(RootComponent);
 	HeadFlipbookComponent->SetRelativeRotation(FRotator(0, 90, 0));
 	HeadFlipbookComponent->SetRelativeScale3D(FVector(0.3, 1.f, 0.3));
+
 	DrillFlipbookComponent = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("Drill Component"));
 	DrillFlipbookComponent->SetupAttachment(RootComponent);
 	DrillFlipbookComponent->SetRelativeRotation(FRotator(0, 90, 0));
 	DrillFlipbookComponent->SetRelativeScale3D(FVector(0.f, 1.f, 0.f));
 	SoundComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Sound"));
+
 	
 	// Tail component
 	// TailSplineComponent = CreateDefaultSubobject<USplineMeshComponent>(TEXT("Tail Component"));
@@ -46,7 +48,9 @@ APlayerRoot::APlayerRoot()
 void APlayerRoot::OnConstruction(const FTransform& Transform)
 {
 	if(HeadFlipbook) HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
+
 	if(DrillFlipbook) DrillFlipbookComponent->SetFlipbook(DrillFlipbook);
+
 	Acceleration = FMath::Clamp(Acceleration, 0.01, 100.f);
 	TurnSpeed = FMath::Clamp(TurnSpeed, 0.01, 10.f);
 	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, 100.f));
@@ -62,7 +66,9 @@ void APlayerRoot::BeginPlay()
 	
 	// Panic setup
 	if(HeadFlipbook) HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
+
 	if(DrillFlipbook) DrillFlipbookComponent->SetFlipbook(DrillFlipbook);
+
 	CameraLoc = PlayerCamera->GetComponentLocation();
 	
 	// Set top and bottom box bindings
@@ -90,6 +96,7 @@ void APlayerRoot::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 // Called to slow the player and tell it it's been hit
 void APlayerRoot::Bonk(AActor* HitActor)
 {
+
 	if (IsProtected)
 	{
 		ResetFace();
@@ -110,7 +117,7 @@ void APlayerRoot::Bonk(AActor* HitActor)
 }
 void APlayerRoot::Chomp(AActor* HitActor)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, "Chomp: " + HitActor->GetName());
+
 }
 
 // Overlaps
@@ -190,21 +197,24 @@ void APlayerRoot::MoveRight(float AxisValue)
 {
 	if(IsGoingUp)
 	{
+
 		if (!GotFirstSpline)
 		{
 			PathPoints.Add(GetActorLocation());
 			GotFirstSpline = true;
 		}
+
 		if (AxisValue != LastAxis)
 		{
 			LastAxis = AxisValue;
 			PathPoints.Add(GetActorLocation());
 		}
-		// Log turn point for spline
+
 		if (FVector::Distance(PathPoints[PathPoints.Num() - 1], GetActorLocation()) >= 261)
 		{
 			PathPoints.Add(GetActorLocation());
 		}
+
 		
 		// Movement
 		Lerp = FMath::Clamp(Lerp + (TurnSpeed * AxisValue), -(int32(!IsBlockingLeft)), int32(!IsBlockingRight));
