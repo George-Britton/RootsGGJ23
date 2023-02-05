@@ -16,9 +16,15 @@ APlayerRoot::APlayerRoot()
 	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, 0.f));
 	
 	// Flipbook asset component
-	FlipbookComponent = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("Flipbook Component"));
-	FlipbookComponent->SetupAttachment(RootComponent);
-	FlipbookComponent->SetRelativeRotation(FRotator(0, 90, 0));
+	HeadFlipbookComponent = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("Flipbook Component"));
+	HeadFlipbookComponent->SetupAttachment(RootComponent);
+	HeadFlipbookComponent->SetRelativeRotation(FRotator(0, 90, 0));
+	HeadFlipbookComponent->SetRelativeScale3D(FVector(0.3, 1.f, 0.3));
+	
+	// Tail component
+	// TailSplineComponent = CreateDefaultSubobject<USplineMeshComponent>(TEXT("Tail Component"));
+	// TailSplineComponent->SetupAttachment(RootComponent);
+	// TailSplineComponent->AddWorldOffset(FVector(2.f, 0.f, 0.f));
 	
 	// The movement blocking boxes
 	BottomBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Bottom Box"));
@@ -34,10 +40,10 @@ APlayerRoot::APlayerRoot()
 // Called whenever a value is changed
 void APlayerRoot::OnConstruction(const FTransform& Transform)
 {
-	if(Flipbook) FlipbookComponent->SetFlipbook(Flipbook);
+	if(HeadFlipbook) HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
 	Acceleration = FMath::Clamp(Acceleration, 0.01, 100.f);
 	TurnSpeed = FMath::Clamp(TurnSpeed, 0.01, 10.f);
-	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, 200.f));
+	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, 100.f));
 	BottomBox->SetWorldLocation(PlayerCamera->GetComponentLocation() - FVector(0.f, 0.f, DespawnBoxHeight));
 	TopBox->SetWorldLocation(PlayerCamera->GetComponentLocation() + FVector(0.f, 0.f, DespawnBoxHeight));
 }
@@ -48,7 +54,7 @@ void APlayerRoot::BeginPlay()
 	Super::BeginPlay();
 	
 	// Panic setup
-	if(Flipbook) FlipbookComponent->SetFlipbook(Flipbook);
+	if(HeadFlipbook) HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
 	CameraLoc = PlayerCamera->GetComponentLocation();
 	
 	// Set top and bottom box bindings
@@ -69,6 +75,12 @@ void APlayerRoot::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAxis("MoveRight", this, &APlayerRoot::MoveRight);
 }
 
+// Called to slow the player and tell it it's been hit
+void APlayerRoot::Bonk(AActor* HitActor)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, HitActor->GetName());
+}
+
 // Overlaps
 void APlayerRoot::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -84,31 +96,36 @@ void APlayerRoot::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	// Set Speed and turn
-	CurrentSpeed = FMath::Clamp(CurrentSpeed + Acceleration, 0.f, MaxSpeed);
-	
-	// Move
-	AddActorLocalOffset(GetActorUpVector() * CurrentSpeed);
-	SetActorRotation(FRotator(0.f, 0.f, TurnRate * Lerp));
-	PlayerCamera->SetWorldLocation(FVector(CameraLoc.X, CameraLoc.Y, GetActorLocation().Z + 200));
-	
-	//Blocking
-	IsBlockingLeft = GetActorLocation().Y <= PlayerCamera->GetComponentLocation().Y - SideDistance;
-	IsBlockingRight = GetActorLocation().Y >= PlayerCamera->GetComponentLocation().Y + SideDistance;
+	if(IsGoingUp)
+	{
+		// Set Speed and turn
+		CurrentSpeed = FMath::Clamp(CurrentSpeed + Acceleration, 0.f, MaxSpeed);
+		
+		// Move
+		AddActorLocalOffset(GetActorUpVector() * CurrentSpeed);
+		SetActorRotation(FRotator(0.f, 0.f, TurnRate * Lerp));
+		PlayerCamera->SetWorldLocation(FVector(CameraLoc.X, CameraLoc.Y, GetActorLocation().Z + 100.f));
+		
+		//Blocking
+		IsBlockingLeft = GetActorLocation().Y <= PlayerCamera->GetComponentLocation().Y - SideDistance;
+		IsBlockingRight = GetActorLocation().Y >= PlayerCamera->GetComponentLocation().Y + SideDistance;
+	} else CurrentSpeed = 0.f;
 }
 
 // Called to move right on-screen
 void APlayerRoot::MoveRight(float AxisValue)
 {
-	// Log turn point for spline
-	if (AxisValue != LastAxis)
+	if(IsGoingUp)
 	{
-		LastAxis = AxisValue;
-		PathPoints.Add(GetActorLocation());
+		// Log turn point for spline
+		if (AxisValue != LastAxis)
+		{
+			LastAxis = AxisValue;
+			PathPoints.Add(GetActorLocation());
+		}
+		
+		// Movement
+		Lerp = FMath::Clamp(Lerp + (TurnSpeed * AxisValue), -(int32(!IsBlockingLeft)), int32(!IsBlockingRight));
+		if (AxisValue == 0.f) Lerp = Lerp > 0.025f ? Lerp - TurnSpeed : Lerp < -0.025f ? Lerp + TurnSpeed : 0;
 	}
-	
-	// Movement
-	Lerp = FMath::Clamp(Lerp + (TurnSpeed * AxisValue), -(int32(!IsBlockingLeft)), int32(!IsBlockingRight));
-	if (AxisValue == 0.f) Lerp = Lerp > 0.025f ? Lerp - TurnSpeed : Lerp < -0.025f ? Lerp + TurnSpeed : 0;
-
 }
