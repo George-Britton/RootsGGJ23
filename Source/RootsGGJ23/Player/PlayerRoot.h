@@ -20,6 +20,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInRangeOfPlayer, AActor*, OtherAc
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOutOfRangeOfPlayer, AActor*, OtherActor);
 // Delegate for saying the root will start growing
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartGrowing);
+// Delegate for if you're protected when hitting a rock
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDrillRock, AActor*, Rock);
 
 UCLASS()
 class ROOTSGGJ23_API APlayerRoot : public ACharacter
@@ -31,6 +33,8 @@ public:
 	APlayerRoot();
 	
 	// Camera component
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float CameraHeight = 200.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
 	float CameraDistance = 500.f;
 	UPROPERTY(BlueprintReadOnly, Category = "Camera")
@@ -104,6 +108,8 @@ public:
 	bool GotFirstSpline = false;
 	// Delegates
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
+	FOnDrillRock OnDrillRock;
+	UPROPERTY(BlueprintAssignable, Category = "Delegate")
 	FOnStartGrowing OnStartGrowing;
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
 	FOnReachTop OnReachTop;
@@ -111,6 +117,7 @@ public:
 	FOnOutOfRangeOfPlayer OnOutOfRangeOfPlayer;
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
 	FOnInRangeOfPlayer OnInRangeOfPlayer;
+	FTimerHandle FastTimer;
 	
 protected:
 	// Called whenever a value is changed
@@ -131,7 +138,7 @@ public:
 	void Bonk(AActor* HitActor);
 
 	UFUNCTION(BlueprintCallable, Category = "Events")
-	void Chomp(AActor* HitActor);
+	void Chomp(AActor* HitActor){};
 	
 	//Pickups
 	UFUNCTION(BlueprintCallable, Category = "Pickups")
@@ -162,5 +169,7 @@ public:
 	TArray<FVector> GetPathPoints() { PathPoints.Add(GetActorLocation()); return PathPoints; };
 	UFUNCTION(BlueprintCallable, Category = "Delegates")
 	void CallOnReachTop() { IsGoingUp = false; HeadFlipbookComponent->SetFlipbook(SadFlipbook); OnReachTop.Broadcast(); };
+	UFUNCTION(BlueprintCallable, Category = "Delegates")
+	void OnDrillThroughRock(AActor* Rock) { OnDrillRock.Broadcast(Rock); };
 
 };

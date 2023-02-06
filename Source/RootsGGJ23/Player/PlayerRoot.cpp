@@ -26,12 +26,6 @@ APlayerRoot::APlayerRoot()
 	DrillFlipbookComponent->SetRelativeRotation(FRotator(0, 90, 0));
 	DrillFlipbookComponent->SetRelativeScale3D(FVector(0.f, 1.f, 0.f));
 	SoundComp = CreateDefaultSubobject<UAudioComponent>(TEXT("Sound"));
-
-	
-	// Tail component
-	// TailSplineComponent = CreateDefaultSubobject<USplineMeshComponent>(TEXT("Tail Component"));
-	// TailSplineComponent->SetupAttachment(RootComponent);
-	// TailSplineComponent->AddWorldOffset(FVector(2.f, 0.f, 0.f));
 	
 	// The movement blocking boxes
 	BottomBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Bottom Box"));
@@ -53,7 +47,7 @@ void APlayerRoot::OnConstruction(const FTransform& Transform)
 
 	Acceleration = FMath::Clamp(Acceleration, 0.01, 100.f);
 	TurnSpeed = FMath::Clamp(TurnSpeed, 0.01, 10.f);
-	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, 100.f));
+	PlayerCamera->SetWorldLocation(GetActorLocation() + FVector(-CameraDistance, 0.f, CameraHeight));
 	BottomBox->SetWorldLocation(PlayerCamera->GetComponentLocation() - FVector(0.f, 0.f, DespawnBoxHeight));
 	TopBox->SetWorldLocation(PlayerCamera->GetComponentLocation() + FVector(0.f, 0.f, DespawnBoxHeight));
 }
@@ -99,13 +93,15 @@ void APlayerRoot::Bonk(AActor* HitActor)
 
 	if (IsProtected)
 	{
+		HitActor->Destroy();
+		IsProtected = false;
 		ResetFace();
 		if (DrillSound)
 		{
 			DrillFlipbookComponent->SetRelativeScale3D(FVector(0.f, 1.f, 0.f));
 			SoundComp->SetSound(DrillSound);
 			SoundComp->Play();
-			HitActor->Destroy();
+			OnDrillThroughRock(HitActor);
 		}
 	} else{
 		Ouchie = true;
@@ -114,10 +110,6 @@ void APlayerRoot::Bonk(AActor* HitActor)
 		FTimerHandle OuchTimer;
 		GetWorld()->GetTimerManager().SetTimer(OuchTimer, this, &APlayerRoot::ResetFace, 1.5f);
 	}
-}
-void APlayerRoot::Chomp(AActor* HitActor)
-{
-
 }
 
 // Overlaps
@@ -142,33 +134,41 @@ void APlayerRoot::Protect()
 }
 void APlayerRoot::Zoom()
 {
-	if (!IsFast)
-	{
-		MaxSpeed = ResetMaxSpeed * 2;
-		HeadFlipbookComponent->SetFlipbook(FastFlipbook);
-		IsFast = true;
-		FTimerHandle FastTimer;
-		GetWorld()->GetTimerManager().SetTimer(FastTimer, this, &APlayerRoot::ResetFace, 5.f);
-	}
+	MaxSpeed = ResetMaxSpeed * 2;
+	HeadFlipbookComponent->SetFlipbook(FastFlipbook);
+	IsFast = true;
+	GetWorld()->GetTimerManager().ClearTimer(FastTimer);
+	GetWorld()->GetTimerManager().SetTimer(FastTimer, this, &APlayerRoot::ResetFace, 5.f);
 }
 void APlayerRoot::ResetFace()
 {
 	HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
 	if (Ouchie)
 	{
-		if (IsFast)
+		if (IsFast && DrillFlipbookComponent->GetRelativeScale3D().X > 0.f)
 		{
+			HeadFlipbookComponent->SetFlipbook(AngeryFlipbook);
+		}
+		else if (IsFast){
 			HeadFlipbookComponent->SetFlipbook(FastFlipbook);
 		}
 		else{
 			HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
 		}
+		Ouchie = false;
 	}
 	else if (IsFast)
 	{
 		IsFast = false;
 		MaxSpeed = ResetMaxSpeed;
+	}else{
+		HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
 	}
+			if (DrillFlipbookComponent->GetRelativeScale3D().X == 0.f)
+		{
+			IsProtected = false;
+			HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
+		}
 }
 
 // Called every frame
@@ -184,7 +184,7 @@ void APlayerRoot::Tick(float DeltaTime)
 		// Move
 		AddActorLocalOffset(GetActorUpVector() * CurrentSpeed);
 		SetActorRotation(FRotator(0.f, 0.f, TurnRate * Lerp));
-		PlayerCamera->SetWorldLocation(FVector(CameraLoc.X, CameraLoc.Y, GetActorLocation().Z + 100.f));
+		PlayerCamera->SetWorldLocation(FVector(CameraLoc.X, CameraLoc.Y, GetActorLocation().Z + CameraHeight));
 		
 		//Blocking
 		IsBlockingLeft = GetActorLocation().Y <= PlayerCamera->GetComponentLocation().Y - SideDistance;
