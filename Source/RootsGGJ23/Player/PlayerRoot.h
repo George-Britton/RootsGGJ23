@@ -9,6 +9,7 @@
 #include "Components/SplineMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/AudioComponent.h"
+#include "../Objects/Bonkable.h"
 #include "Components/BoxComponent.h"
 #include "PlayerRoot.generated.h"
 
@@ -20,8 +21,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInRangeOfPlayer, AActor*, OtherAc
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOutOfRangeOfPlayer, AActor*, OtherActor);
 // Delegate for saying the root will start growing
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartGrowing);
-// Delegate for if you're protected when hitting a rock
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDrillRock, AActor*, Rock);
 
 UCLASS()
 class ROOTSGGJ23_API APlayerRoot : public ACharacter
@@ -108,8 +107,6 @@ public:
 	bool GotFirstSpline = false;
 	// Delegates
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
-	FOnDrillRock OnDrillRock;
-	UPROPERTY(BlueprintAssignable, Category = "Delegate")
 	FOnStartGrowing OnStartGrowing;
 	UPROPERTY(BlueprintAssignable, Category = "Delegate")
 	FOnReachTop OnReachTop;
@@ -135,7 +132,7 @@ public:
 
 	// Called to slow the player and tell it it's been hit
 	UFUNCTION(BlueprintCallable, Category = "Events")
-	void Bonk(AActor* HitActor);
+	void Bonk(ABonkable* Bonked);
 
 	UFUNCTION(BlueprintCallable, Category = "Events")
 	void Chomp(AActor* HitActor){};
@@ -170,6 +167,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Delegates")
 	void CallOnReachTop() { IsGoingUp = false; HeadFlipbookComponent->SetFlipbook(SadFlipbook); OnReachTop.Broadcast(); };
 	UFUNCTION(BlueprintCallable, Category = "Delegates")
-	void OnDrillThroughRock(AActor* Rock) { OnDrillRock.Broadcast(Rock); };
+		void OnDrillThroughRock(ABonkable* Bonkable);
 
 };

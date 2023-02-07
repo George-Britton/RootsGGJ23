@@ -88,12 +88,10 @@ void APlayerRoot::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 }
 
 // Called to slow the player and tell it it's been hit
-void APlayerRoot::Bonk(AActor* HitActor)
+void APlayerRoot::Bonk(ABonkable* Bonked)
 {
-
 	if (IsProtected)
 	{
-		HitActor->Destroy();
 		IsProtected = false;
 		ResetFace();
 		if (DrillSound)
@@ -101,15 +99,20 @@ void APlayerRoot::Bonk(AActor* HitActor)
 			DrillFlipbookComponent->SetRelativeScale3D(FVector(0.f, 1.f, 0.f));
 			SoundComp->SetSound(DrillSound);
 			SoundComp->Play();
-			OnDrillThroughRock(HitActor);
+			OnDrillThroughRock(Bonked);
 		}
 	} else{
 		Ouchie = true;
 		HeadFlipbookComponent->SetFlipbook(SadFlipbook);
 		CurrentSpeed = 0.f;
+		OnDrillThroughRock(Bonked);
 		FTimerHandle OuchTimer;
 		GetWorld()->GetTimerManager().SetTimer(OuchTimer, this, &APlayerRoot::ResetFace, 1.5f);
 	}
+}
+void APlayerRoot::OnDrillThroughRock(ABonkable* Bonkable)
+{
+	Bonkable->Bonk();
 }
 
 // Overlaps
@@ -145,11 +148,7 @@ void APlayerRoot::ResetFace()
 	HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
 	if (Ouchie)
 	{
-		if (IsFast && DrillFlipbookComponent->GetRelativeScale3D().X > 0.f)
-		{
-			HeadFlipbookComponent->SetFlipbook(AngeryFlipbook);
-		}
-		else if (IsFast){
+		if (IsFast){
 			HeadFlipbookComponent->SetFlipbook(FastFlipbook);
 		}
 		else{
@@ -161,14 +160,10 @@ void APlayerRoot::ResetFace()
 	{
 		IsFast = false;
 		MaxSpeed = ResetMaxSpeed;
+		HeadFlipbookComponent->SetFlipbook(IsProtected ? AngeryFlipbook : HeadFlipbook);
 	}else{
-		HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
+		HeadFlipbookComponent->SetFlipbook(IsProtected ? AngeryFlipbook : HeadFlipbook);
 	}
-			if (DrillFlipbookComponent->GetRelativeScale3D().X == 0.f)
-		{
-			IsProtected = false;
-			HeadFlipbookComponent->SetFlipbook(HeadFlipbook);
-		}
 }
 
 // Called every frame
